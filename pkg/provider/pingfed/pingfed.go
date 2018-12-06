@@ -114,8 +114,8 @@ func (ac *Client) handleLegacyTimeSecurID(ctx context.Context, doc *goquery.Docu
 		return ctx, nil, errors.Wrap(err, "error extracting login form")
 	}
 
-	securidPin := prompter.StringRequired("Enter SecurID Pin")
-	securidKey := prompter.StringRequired("Enter SecurID Key")
+	securidPin := prompter.Password("Enter SecurID Pin")
+	securidKey := prompter.Password("Enter SecurID Key")
 	form.Values.Set("pf.username", loginDetails.Username)
 	form.Values.Set("pf.pass", securidPin+securidKey)
 	form.URL = makeAbsoluteURL(form.URL, loginDetails.URL)
