@@ -74,6 +74,9 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 
 	if samlResponse, ok := extractSAMLResponse(doc); ok {
 		return samlResponse, nil
+	} else if docIsLegacyTimeSecurID(doc) {
+		logger.WithField("type", "tisecurid").Debug("doc detect")
+		handler = ac.handleLegacyTimeSecurID
 	} else if docIsLogin(doc) {
 		logger.WithField("type", "login").Debug("doc detect")
 		handler = ac.handleLogin
@@ -98,6 +101,27 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 		return "", err
 	}
 	return ac.follow(ctx, req)
+}
+
+func (ac *Client) handleLegacyTimeSecurID(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
+	if !ok {
+		return ctx, nil, fmt.Errorf("no context value for 'login'")
+	}
+
+	form, err := page.NewFormFromDocument(doc, "form")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting login form")
+	}
+
+	securidPin := prompter.StringRequired("Enter SecurID Pin")
+	securidKey := prompter.StringRequired("Enter SecurID Key")
+	form.Values.Set("pf.username", loginDetails.Username)
+	form.Values.Set("pf.pass", securidPin+securidKey)
+	form.URL = makeAbsoluteURL(form.URL, loginDetails.URL)
+
+	req, err := form.BuildRequest()
+	return ctx, req, err
 }
 
 func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
@@ -187,6 +211,10 @@ func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document)
 	}
 	req, err := form.BuildRequest()
 	return ctx, req, err
+}
+
+func docIsLegacyTimeSecurID(doc *goquery.Document) bool {
+	return doc.Has("form#two").Size() == 1
 }
 
 func docIsLogin(doc *goquery.Document) bool {
