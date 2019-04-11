@@ -1,6 +1,6 @@
 NAME=saml2aws
 ARCH=$(shell uname -m)
-VERSION=2.14.0
+VERSION=2.14.0-azure-mfa-beta-3
 ITERATION := 1
 
 SOURCE_FILES?=$$(go list ./... | grep -v /vendor/)
@@ -51,7 +51,7 @@ dist:
 	done
 
 release:
-	@github-release "v$(VERSION)" dist/* --commit "$(git rev-parse HEAD)" --github-repository versent/$(NAME)
+	@github-release "v$(VERSION)" dist/* --commit "$(git rev-parse HEAD)" --github-repository meredith-digops/$(NAME)
 
 test:
 	@gocov test $(SOURCE_FILES) | gocov report
