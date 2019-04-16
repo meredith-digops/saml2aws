@@ -99,6 +99,22 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "error retrieving login form results")
 	}
 
+	// Copy the body byte stream for re-use later
+	bodyBytes, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return samlAssertion, errors.Wrap(err, "error reading response body")
+	}
+
+	// Reset response body to avoid error when reading for MFA prompt
+	res.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	doc, err = goquery.NewDocumentFromResponse(res)
+
+	errorText := doc.Find("#errorText").Text()
+
+	if errorText != "" {
+		return samlAssertion, errors.New(errorText)
+	}
+
 	switch ac.idpAccount.MFA {
 	case "Azure":
 		res, err = ac.azureMFA(authSubmitURL, loginDetails.MFAToken, res)
